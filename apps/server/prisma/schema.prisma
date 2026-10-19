@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id
+  email        String   @unique
+  name         String
+  avatarUrl    String?  @map("avatar_url")
+  plan         String   @default("free")
+  passwordHash String?  @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  hostedRooms   Room[]              @relation("HostedRooms")
+  memberships   RoomParticipant[]
+  messages      Message[]
+  reactions     Reaction[]
+  ownedCircles  Circle[]            @relation("OwnedCircles")
+  circleMembers CircleMember[]
+  watchItems    WatchlistItem[]
+  rsvps         ScheduledWatchRsvp[]
+  voteAnswers   VoteAnswer[]
+  reports       Report[]
+  blocksMade    UserBlock[]         @relation("Blocker")
+  blocksReceived UserBlock[]        @relation("Blocked")
+
+  @@map("users")
+}
+
+model Room {
+  id               String   @id
+  code             String   @unique
+  hostUserId       String   @map("host_user_id")
+  sourceType       String   @map("source_type")
+  syncMode         String   @map("sync_mode")
+  sourceUrl        String?  @map("source_url")
+  service          String?
+  externalTitle    String?  @map("external_title")
+  externalDeepLink String?  @map("external_deep_link")
+  externalWebUrl   String?  @map("external_web_url")
+  status           String   @default("active")
+  circleId         String?  @map("circle_id")
+  permissionsJson  String   @map("permissions_json")
+  createdAt        DateTime @default(now()) @map("created_at")
+  expiresAt        DateTime @map("expires_at")
+
+  host         User                @relation("HostedRooms", fields: [hostUserId], references: [id])
+  circle       Circle?             @relation(fields: [circleId], references: [id])
+  participants RoomParticipant[]
+  events       PlaybackEvent[]
+  messages     Message[]
+  reactions    Reaction[]
+  schedules    ScheduledWatch[]
+
+  @@map("rooms")
+}
+
+model RoomParticipant {
+  id         String   @id
+  roomId     String   @map("room_id")
+  userId     String   @map("user_id")
+  role       String
+  joinedAt   DateTime @default(now()) @map("joined_at")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+  @@map("room_participants")
+}
+
+model PlaybackEvent {
+  id          String   @id
+  roomId      String   @map("room_id")
+  userId      String   @map("user_id")
+  eventType   String   @map("event_type")
+  positionSec Float    @map("position_sec")
+  createdAt   DateTime @default(now()) @map("created_at")
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+  @@map("playback_events")
+}
+
+model Message {
+  id        String   @id
+  roomId    String   @map("room_id")
+  userId    String   @map("user_id")
+  text      String
+  createdAt DateTime @default(now()) @map("created_at")
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([roomId, createdAt])
+  @@map("messages")
+}
+
+model Reaction {
+  id        String   @id
+  roomId    String   @map("room_id")
+  userId    String   @map("user_id")
+  emoji     String
+  createdAt DateTime @default(now()) @map("created_at")
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([roomId, createdAt])
+  @@map("reactions")
+}
+
+model Circle {
+  id          String   @id
+  name        String
+  ownerUserId String   @map("owner_user_id")
+  kind        String   @default("group")
+  createdAt   DateTime @default(now()) @map("created_at")
+  owner       User     @relation("OwnedCircles", fields: [ownerUserId], references: [id])
+  members     CircleMember[]
+  watchItems  WatchlistItem[]
+  schedules   ScheduledWatch[]
+  votes       Vote[]
+  rooms       Room[]
+
+  @@map("circles")
+}
+
+model CircleMember {
+  id       String   @id
+  circleId String   @map("circle_id")
+  userId   String   @map("user_id")
+  role     String
+  joinedAt DateTime @default(now()) @map("joined_at")
+  circle   Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([circleId, userId])
+  @@map("circle_members")
+}
+
+model WatchlistItem {
+  id            String   @id
+  circleId      String   @map("circle_id")
+  addedByUserId String   @map("added_by_user_id")
+  title         String
+  service       String?
+  externalUrl   String?  @map("external_url")
+  posterUrl     String?  @map("poster_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+  circle        Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  addedBy       User     @relation(fields: [addedByUserId], references: [id])
+
+  @@map("watchlist_items")
+}
+
+model ScheduledWatch {
+  id        String   @id
+  circleId  String?  @map("circle_id")
+  roomId    String?  @map("room_id")
+  title     String
+  startsAt  DateTime @map("starts_at")
+  timezone  String
+  posterUrl String?  @map("poster_url")
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  circle    Circle?  @relation(fields: [circleId], references: [id])
+  room      Room?    @relation(fields: [roomId], references: [id])
+  rsvps     ScheduledWatchRsvp[]
+
+  @@map("scheduled_watches")
+}
+
+model ScheduledWatchRsvp {
+  id               String   @id
+  scheduledWatchId String   @map("scheduled_watch_id")
+  userId           String   @map("user_id")
+  response         String
+  createdAt        DateTime @default(now()) @map("created_at")
+  watch            ScheduledWatch @relation(fields: [scheduledWatchId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id])
+
+  @@unique([scheduledWatchId, userId])
+  @@map("scheduled_watch_rsvps")
+}
+
+model Vote {
+  id        String   @id
+  circleId  String   @map("circle_id")
+  question  String
+  endsAt    DateTime @map("ends_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  circle    Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  options   VoteOption[]
+
+  @@map("votes")
+}
+
+model VoteOption {
+  id        String   @id
+  voteId    String   @map("vote_id")
+  label     String
+  createdAt DateTime @default(now()) @map("created_at")
+  vote      Vote     @relation(fields: [voteId], references: [id], onDelete: Cascade)
+  answers   VoteAnswer[]
+
+  @@map("vote_options")
+}
+
+model VoteAnswer {
+  id           String   @id
+  voteOptionId String   @map("vote_option_id")
+  userId       String   @map("user_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  option       VoteOption @relation(fields: [voteOptionId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@unique([voteOptionId, userId])
+  @@map("vote_answers")
+}
+
+model Report {
+  id         String   @id
+  reporterId String   @map("reporter_id")
+  targetType String   @map("target_type")
+  targetId   String   @map("target_id")
+  reason     String
+  createdAt  DateTime @default(now()) @map("created_at")
+  reporter   User     @relation(fields: [reporterId], references: [id])
+
+  @@map("reports")
+}
+
+model UserBlock {
+  id        String   @id
+  userId    String   @map("user_id")
+  blockedId String   @map("blocked_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation("Blocker", fields: [userId], references: [id])
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id])
+
+  @@unique([userId, blockedId])
+  @@map("user_blocks")
+}
+
+model AnalyticsEvent {
+  id        String   @id
+  userId    String?  @map("user_id")
+  name      String
+  props     Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([name, createdAt])
+  @@map("analytics_events")
+}
+
+model PushReminder {
+  id        String    @id
+  userId    String    @map("user_id")
+  sendAt    DateTime  @map("send_at")
+  title     String
+  body      String
+  sentAt    DateTime? @map("sent_at")
+
+  @@index([sentAt, sendAt])
+  @@map("push_reminders")
+}

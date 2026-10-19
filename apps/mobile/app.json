@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "Sinc",
+    "slug": "sinc",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "scheme": "sinc",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B0B12",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.sinc.watch",
+      "associatedDomains": [
+        "applinks:sinc.app"
+      ],
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "android": {
+      "package": "app.sinc.watch",
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0B12",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "sinc.app",
+              "pathPrefix": "/r"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png",
+      "backgroundColor": "#0B0B12"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-video",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0B0B12",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180
+        }
+      ],
+      "expo-status-bar"
+    ]
+  }
+}
